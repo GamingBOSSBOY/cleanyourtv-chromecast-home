@@ -171,6 +171,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView weatherPill, nowPlayingPill;
     private View cardsRow;
     private boolean cardsCompact;
+    /** The weather card folds into its pill this long after Home shows, like the grid-scrolled state. */
+    private static final long CARDS_COLLAPSE_MS = 30_000L;
+    private final Runnable collapseCards = () -> {
+        cardsCompact = true;
+        layoutCards();
+    };
     private Weather.Report lastWeather;
     private String weatherCity;
     private NowPlaying.Track lastTrack;
@@ -537,6 +543,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 if (compact != cardsCompact) {
                     cardsCompact = compact;
                     layoutCards();
+                    handler.removeCallbacks(collapseCards);
+                    if (!compact) handler.postDelayed(collapseCards, CARDS_COLLAPSE_MS);
                 }
             }
         });
@@ -741,6 +749,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateRace();
         nowPlaying.start();
         if (weather != null) weather.start();
+        handler.removeCallbacks(collapseCards);
+        handler.postDelayed(collapseCards, CARDS_COLLAPSE_MS);
         if (agenda != null) agenda.start();
         // The network and Inputs pills keep their state while Home is in the background, and callbacks update them
         // when the network or the inputs change, so this refresh only catches anything missed. Its binder calls
@@ -879,6 +889,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         stopStats();
         nowPlaying.stop();
         if (weather != null) weather.stop();
+        handler.removeCallbacks(collapseCards);
         if (agenda != null) agenda.stop();
         if (diya != null) diya.stop();
         cancelPendingFocusScroll();
